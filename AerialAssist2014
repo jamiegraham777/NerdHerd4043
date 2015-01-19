@@ -1,0 +1,345 @@
+/*----------------------------------------------------------------------------*/
+/* Copyright (c) FIRST 2008. All Rights Reserved.                             */
+/* Open Source Software - may be modified and shared by FRC teams. The code   */
+/* must be accompanied by the FIRST BSD license file in the root directory of */
+/* the project.                                                               */
+/*----------------------------------------------------------------------------*/
+
+package edu.wpi.first.wpilibj.templates;
+
+import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.DriverStationLCD;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.Relay;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.Ultrasonic;
+import edu.wpi.first.wpilibj.Victor;
+import edu.wpi.first.wpilibj.SimpleRobot;
+
+/**
+ * The VM is configured to automatically run this class, and to call the
+ * functions corresponding to each mode, as described in the SimpleRobot
+ * documentation. If you change the name of this class or the package after
+ * creating this project, you must also update the manifest file in the resource
+ * directory.
+ */
+public class Main extends SimpleRobot {
+    
+    public Joystick driveStick = new Joystick(1);
+    public Joystick shootStick = new Joystick(2);
+    
+    public Victor wheelFL = new Victor(1);
+    public Victor wheelFR = new Victor(2); 
+    public Victor wheelBL = new Victor(3);
+    public Victor wheelBR = new Victor(4);
+    public Victor launcher = new Victor(5);
+    public Victor catcher = new Victor(6);
+    
+    public Relay release = new Relay(1);
+   
+    DigitalInput launcherLimit = new DigitalInput(1);
+    DigitalInput catcherLimit = new DigitalInput(2);
+    
+    Ultrasonic rangeFinder = new Ultrasonic(5, 6); //input, output
+    
+    public Timer launcherTimer = new Timer();
+    public Timer catcherTimer = new Timer();
+    public Timer gameTimer = new Timer();
+    
+    DriverStationLCD dsLCD = DriverStationLCD.getInstance();
+    
+    double direction = 0;
+    double magnitude = 0;
+    double rotation = 0;
+    double wheelSpeedFL = 0;
+    double wheelSpeedFR = 0;
+    double wheelSpeedBL = 0;
+    double wheelSpeedBR = 0;
+    
+    int wheelCounter = 0;
+    int launcherState = 0;
+    int page = 1;
+    
+    boolean launcherSlack = true;
+    boolean isLoading = false;
+    boolean reverse = false;
+    boolean armsUp = true;
+    boolean setup = false;
+    
+    int error = 0;
+    
+    
+    /**
+     * This function is called once each time the robot enters autonomous mode.
+     */
+    public void autonomous() {
+        openCatcher();
+        move(0.7, 0.6, 0.7, 0.6);
+        Timer.delay(0.5);
+        move(0.0, 0.0, 0.0, 0.0);
+        //shootSetup();
+        //shoot();
+    }
+
+    /**
+     * This function is called once each time the robot enters operator control.
+     */
+    public void operatorControl() {
+        while(isEnabled() && isOperatorControl()) {
+            error++;
+            drive();
+            
+            //switch wethor the drive controlles are reversed or not
+            if (driveStick.getRawButton(2)) {
+                if (reverse)
+                    reverse = false;
+                else
+                    reverse = true;
+            }
+            
+            //shoots if both the trigger and button 2 are pressed
+            if (shootStick.getRawButton(1) && shootStick.getRawButton(2))
+                shoot();
+            
+            //atomaticaly loads catipalt and gives slack, press 8 to stop early
+            if (shootStick.getRawButton(3))
+                isLoading = true;
+            if (isLoading) {
+                if (shootStick.getRawButton(8))
+                    isLoading = false;
+                if (load())
+                {
+                    isLoading = false;
+                    launcherState = 0;
+                }
+            }
+            
+            //4 and 5 are manual overides for the launcher control (move launcher up and down)
+            if (shootStick.getRawButton(4))
+                launcher.set(-1);
+            else if (shootStick.getRawButton(5))
+                launcher.set(1);
+            else
+                launcher.set(0);
+            
+            //put catcher in the open position
+            if (shootStick.getRawButton(6)) {
+                openCatcher();
+            }
+            
+            //put catcher in clossed position
+            if (shootStick.getRawButton(7)) {
+                closeCatcher();
+            }
+            
+            //move to ideal distance for shooting, press 8 to stop early
+            if (shootStick.getRawButton(11))
+              shootSetup();  
+            
+            //printout information to the computer screen
+            printout();
+        }
+    }
+    
+    /**
+     * This function is called once each time the robot enters test mode.
+     */
+    public void test() {
+        printout();
+    }
+    
+    /**
+     * this is called once when the robot is enabled
+     */
+    public void robotInit() {
+        rangeFinder.setAutomaticMode(true);
+     }
+    
+    /**
+     * this takes in the input from the driveStick and calculates the speed
+     * fort all of the wheels
+     */
+    public void drive() {
+        direction = driveStick.getDirectionRadians();
+        magnitude = driveStick.getMagnitude();
+        rotation = driveStick.getThrottle();
+        
+        double tolerance = 0.02;
+        if (magnitude < tolerance)
+            magnitude = 0;
+        if (rotation < tolerance && rotation > -tolerance)
+            rotation = 0;
+        
+        if (reverse) {
+            wheelSpeedFL = -(magnitude * Math.sin(direction + (Math.PI / 4.0)) - (rotation / 2));
+            wheelSpeedFR = -(magnitude * Math.cos(direction + (Math.PI / 4.0)) + (rotation / 2));
+            wheelSpeedBL = -(magnitude * Math.cos(direction + (Math.PI / 4.0)) - (rotation / 2));
+            wheelSpeedBR = -(magnitude * Math.sin(direction + (Math.PI / 4.0)) + (rotation / 2));
+        }
+        else
+        {
+            wheelSpeedFL = (magnitude * Math.sin(direction + (Math.PI / 4.0)) + (rotation / 2));
+            wheelSpeedFR = (magnitude * Math.cos(direction + (Math.PI / 4.0)) - (rotation / 2));
+            wheelSpeedBL = (magnitude * Math.cos(direction + (Math.PI / 4.0)) + (rotation / 2));
+            wheelSpeedBR = (magnitude * Math.sin(direction + (Math.PI / 4.0)) - (rotation / 2));
+        }
+        
+        move(wheelSpeedFL, wheelSpeedFR, wheelSpeedBL, wheelSpeedBR);
+    }
+    
+    /**
+     * pulls the trigger on the launcher
+     */
+    public void shoot() {
+        move(0, 0, 0, 0);
+        
+        release.set(Relay.Value.kForward); 
+        
+        launcherTimer.reset();
+        launcherTimer.start();
+        while(isEnabled()) {
+            if(launcherTimer.get() > 0.75) {
+                launcherTimer.stop();
+                release.set(Relay.Value.kOff);
+                break;
+            }
+        }
+    }
+    
+    /**
+     * pulls the launcher into place and gives slack
+     */
+    public boolean load () {
+        //error = 1;
+        switch (launcherState)
+        {
+                case 0:
+                    if (!launcherLimit.get())
+                    {
+                        Timer.delay(0.01);
+                        launcherState = 1;
+                    }
+                    launcher.set(-1);
+                    return false;
+                    
+                case 1:
+                    launcher.set(1);
+                    if (launcherSlack)
+                    {
+                        launcherSlack = false;
+                        launcherTimer.start();
+                    }
+                    if (launcherTimer.get() >= 4.00)
+                        launcherState = 2;
+                    return false;
+                    
+                default:
+                    launcher.set(0);
+                    launcherState = 0;
+                    launcherSlack = true;
+                    launcherTimer.stop();
+                    launcherTimer.reset();
+                    return true;
+        }
+    }
+    
+    /**
+     * opens the catcher
+     */
+    public void openCatcher(){
+        catcher.set(0.5);
+        
+        catcherTimer.reset();
+        catcherTimer.start();
+        while (isEnabled()) {
+            if(!catcherLimit.get() || catcherTimer.get() > 0.8) {
+                catcherTimer.stop();
+                catcher.set(0);
+                break;
+            }
+        }
+    }
+    
+    /**
+     * closes the catcher
+     */
+    public void closeCatcher(){
+         catcher.set(-0.5);
+        
+        catcherTimer.reset();
+        catcherTimer.start();
+        while (isEnabled()) {
+            if(catcherTimer.get() > 0.5) {
+                catcherTimer.stop();
+                catcher.set(0);
+                break;
+            }
+        }
+    }
+    
+    /**
+     * drives forward and backward until it is the correct distance from wall
+     * to shoot
+     */
+    public void shootSetup() {
+        setup = true;
+        double distance;
+        double idealDistance = 108;
+        double deviation = 3;
+        
+        while (setup) {
+            distance = rangeFinder.getRangeInches();
+            
+            if (shootStick.getRawButton(8))
+                setup = false;
+            
+            if (distance < idealDistance - deviation)
+                move(0.7, 0.7, 0.7, 0.7);
+            
+            else if(distance > idealDistance + deviation)
+                move(-0.7, -0.7, -0.7, -0.7);
+            
+            else {
+                move(0, 0, 0, 0);
+                setup = false;
+            }
+        }
+    }
+    
+    /**
+     * takes inputs for drive motor controllers and adjust them in order to
+     * correct the speed using the magnetic shaft encoders
+     */
+    public void move(double fl, double fr, double bl, double br) {
+        wheelFL.set(fl);
+        wheelFR.set(fr);
+        wheelBL.set(bl);
+        wheelBR.set(br);
+    }
+    
+    /**
+     * prints out data to the computer screen
+     */
+    public void printout() {
+        switch(page) {
+            case 1:
+                dsLCD.free();
+                dsLCD.println(DriverStationLCD.Line.kUser1 , 3 ,"reverse: " + reverse + "********************");
+                dsLCD.println(DriverStationLCD.Line.kUser2 , 3 ,"shaftEncoder :(" + "********************");
+                dsLCD.println(DriverStationLCD.Line.kUser3 , 3 ,"range: " + rangeFinder.getRangeInches() + "********************");
+                dsLCD.println(DriverStationLCD.Line.kUser4 , 3 ,"error " + error + "********************");
+                dsLCD.println(DriverStationLCD.Line.kUser5 , 3 ,"wheelSpeedBL: " + wheelSpeedBL + "********************");
+                dsLCD.println(DriverStationLCD.Line.kUser6 , 3 ,"wheelSpeedBR: " + wheelSpeedBR + "********************");
+                
+                //dsLCD.println(DriverStationLCD.Line.kUser3 , 3 ,"isLoading: " + isLoading + "********************");
+                //dsLCD.println(DriverStationLCD.Line.kUser4 , 3 ,"setup: " + setup + "********************");
+                //dsLCD.println(DriverStationLCD.Line.kUser5 , 3 ,"launcherLimit: " + launcherLimit.get() + "********************");
+                //dsLCD.println(DriverStationLCD.Line.kUser6 , 3 ,"catcherLimit: " + catcherLimit.get() + "********************");
+                dsLCD.updateLCD();
+                break;
+                
+            default:
+                page = 1;
+        }
+    }
+}
