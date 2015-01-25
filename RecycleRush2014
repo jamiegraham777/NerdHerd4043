@@ -1,0 +1,109 @@
+
+package org.usfirst.frc.team4043.robot;
+
+import edu.wpi.first.wpilibj.IterativeRobot;
+import edu.wpi.first.wpilibj.command.Scheduler;
+import edu.wpi.first.wpilibj.livewindow.LiveWindow;
+import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.Victor;
+import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.first.wpilibj.DigitalInput;
+
+/**
+ * The VM is configured to automatically run this class, and to call the
+ * functions corresponding to each mode, as described in the IterativeRobot
+ * documentation. If you change the name of this class or the package after
+ * creating this project, you must also update the manifest file in the resource
+ * directory.
+ */
+public class Robot extends IterativeRobot {
+
+	Talon one, two;
+	Victor three;
+    RobotDrive myRobot;  // class that handles basic drive operations
+    RobotDrive elevator;
+    Joystick xbox;  // set to ID 1 in DriverStation
+    DigitalInput topLimit, bottomLimit;
+    public Robot() {
+    	one = new Talon(1);
+    	two = new Talon(2);
+    	three = new Victor(3);
+        myRobot = new RobotDrive(one,two);
+        myRobot.setExpiration(0.1);
+        xbox = new Joystick(0);
+        topLimit = new DigitalInput(1);
+        bottomLimit = new DigitalInput(2);
+    }    
+    /**
+     * This function is run when the robot is first started up and should be
+     * used for any initialization code.
+     */
+    public void robotInit() {
+		//oi = new OI();
+        // instantiate the command used for the autonomous period
+       // autonomousCommand = new ExampleCommand();
+  
+    }
+	
+	public void disabledPeriodic() {
+		Scheduler.getInstance().run();
+	}
+
+    public void autonomousInit() {
+        // schedule the autonomous command (example)
+        //if (autonomousCommand != null) autonomousCommand.start();
+    }
+
+    /**
+     * This function is called periodically during autonomous
+     */
+    public void autonomousPeriodic() {
+        Scheduler.getInstance().run();
+    }
+
+    public void teleopInit() {
+		// This makes sure that the autonomous stops running when
+        // teleop starts running. If you want the autonomous to 
+        // continue until interrupted by another command, remove
+        // this line or comment it out.
+      //  if (autonomousCommand != null) autonomousCommand.cancel();
+    }
+
+    /**
+     * This function is called when the disabled button is hit.
+     * You can use it to reset subsystems before shutting down.
+     */
+    public void disabledInit(){
+
+    }
+
+    /**
+     * This function is called periodically during operator control
+     */
+    public void teleopPeriodic() {
+    	myRobot.setSafetyEnabled(true);
+        while (isOperatorControl() && isEnabled()) {
+        	if (xbox.getRawAxis(2) == 1 && ! bottomLimit.get()) 
+        	{
+        	Timer.delay(0.01);
+        	three.set(-1);	
+        	}
+        	else if(xbox.getRawAxis(3) == -1 && ! topLimit.get()) 
+        	{
+        		Timer.delay(0.01);
+        		three.set(1);
+        	}
+        	myRobot.tankDrive(-xbox.getRawAxis(1)/1.5, -xbox.getRawAxis(5)/1.5);
+            Timer.delay(0.005);         
+    } 
+    }
+    
+    /**
+     * This function is called periodically during test mode
+     */
+    public void testPeriodic() {
+       // LiveWindow.run();
+    }
+}
