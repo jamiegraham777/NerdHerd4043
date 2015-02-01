@@ -1,0 +1,51 @@
+package org.usfirst.frc.team4043.robot;
+
+
+import edu.wpi.first.wpilibj.SpeedController;
+import edu.wpi.first.wpilibj.CANTalon;
+import edu.wpi.first.wpilibj.SampleRobot;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.RobotDrive;
+
+/**
+ * This is a short sample program demonstrating how to use the basic throttle
+ * mode of the new CAN Talon.
+ */
+public class Robot extends SampleRobot {
+
+  CANTalon motor1, motor2;
+  Joystick xbox;
+  RobotDrive drive;
+
+  public Robot() {
+      motor1 = new CANTalon(0); // Initialize the CanTalonSRX on device 1.
+      motor2 = new CANTalon(1);
+      xbox = new Joystick(0);
+      drive = new RobotDrive(motor1, motor2);
+      
+  }
+
+  /**
+    * Runs the motor.
+    */
+  public void operatorControl() {
+
+	  drive.setSafetyEnabled(true);
+	while (isOperatorControl() && isEnabled()) {
+      // Set the motor's output to half power.
+      // This takes a number from -1 (100% speed in reverse) to +1 (100% speed
+      // going forward)
+     
+     drive.tankDrive(-xbox.getX()/1.5, -xbox.getY()/1.5);
+
+ //		motor1.set(-1 * xbox.getY());
+  //		motor2.set(-1 * xbox.getY());
+      Timer.delay(0.01);  // Note that the CANTalon only receives updates every
+                          // 10ms, so updating more quickly would not gain you
+                          // anything.
+    }
+    motor1.disable();
+    motor2.disable();
+  }
+}
