@@ -1,0 +1,125 @@
+package org.usfirst.frc.team4043.robot;
+
+
+import edu.wpi.first.wpilibj.SampleRobot;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.CANTalon;
+import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.RobotDrive;
+
+//******************[ Start Code ]*********************************************************************
+
+public class Robot extends SampleRobot {
+	CANTalon leftWheel, rightWheel, elevator1, elevator2;
+	Talon leftSpinyWheel, rightSpinyWheel;
+	DigitalInput Top, Bottom;
+	RobotDrive myRobot;
+    Joystick xbox, xbox2;  // set to ID 1 in DriverStation
+    
+    public Robot() {
+    	leftWheel = new CANTalon(2);
+    	rightWheel = new CANTalon(1);
+    	elevator1 = new CANTalon(10);
+    	elevator2 = new CANTalon(9); 
+    	leftSpinyWheel = new Talon(0);
+    	rightSpinyWheel = new Talon(1);
+    	myRobot = new RobotDrive(leftSpinyWheel, rightSpinyWheel);
+    	Top = new DigitalInput(0);
+    	Bottom = new DigitalInput(1);
+        xbox = new Joystick(0);
+        xbox2 = new Joystick(1);
+    }    
+    
+    public void operatorControl() {
+        
+        while (isOperatorControl() && isEnabled()) {
+        	
+//**************[ elevator code ]**********************************************************************
+        	  if(((xbox2.getRawAxis(2)>0.1 || xbox2.getRawAxis(2)<-0.1)) && !Top.get()){
+        	    	elevator1.set(xbox2.getRawAxis(2)/1.5);
+        			}
+        	       else
+        	    	   elevator1.set(0);
+        	       
+        	       if(((xbox2.getRawAxis(3)>0.1 || xbox2.getRawAxis(3)<-0.1))) {// && !Bottom.get()){
+        			elevator2.set(-xbox2.getRawAxis(3)/1.5);
+        			}
+        	       else
+        	    	   elevator2.set(0);
+        	
+//****************[ drives robot ]*********************************************************************
+        	
+       if(xbox.getRawAxis(1)>0.1 || xbox.getRawAxis(1)<-0.1){
+    	leftWheel.set(-xbox.getRawAxis(1)/1.5);
+		}
+       else
+    	   leftWheel.set(0);
+       
+       if(xbox.getRawAxis(5)>0.1 || xbox.getRawAxis(5)<-0.1){
+		rightWheel.set(xbox.getRawAxis(5)/1.5);
+		}
+       else
+    	   rightWheel.set(0);
+     
+       
+//**************[ spin-y wheels ]**********************************************************************
+       	
+       myRobot.arcadeDrive(-xbox2.getRawAxis(1)/1.5, -xbox2.getRawAxis(5)/1.5);
+
+       /* if (xbox.getRawButton(0)) {        //pulls out
+    	   leftSpinyWheel.set(1);
+    	   rightSpinyWheel.set(-1);
+    	   
+       }
+       else {
+    	   leftSpinyWheel.set(0);
+           rightSpinyWheel.set(0);
+       }
+       if (xbox.getRawButton(1)) {       //turns clockwise
+    	   leftSpinyWheel.set(-1);
+    	   rightSpinyWheel.set(-1);
+       }
+       else {
+    	   leftSpinyWheel.set(0);
+       rightSpinyWheel.set(0);
+       }
+       
+       if (xbox.getRawButton(2)) {        //pushes in
+    	   leftSpinyWheel.set(-1/5);
+    	   rightSpinyWheel.set(1/5);
+       }
+       else {
+       leftSpinyWheel.set(0);
+       rightSpinyWheel.set(0);
+       }
+       
+       if (xbox.getRawButton(3)) {       //turns counter-clockwise
+    	   leftSpinyWheel.set(1);
+    	   rightSpinyWheel.set(1);
+       }
+       else {
+    	   leftSpinyWheel.set(0);
+       rightSpinyWheel.set(0);
+       }
+       */
+            Timer.delay(0.01);		// wait for a motor update time      
+} 
+    }
+    
+    
+    
+    public void autonomous() {
+    	
+    	while(isEnabled()==true){
+    		
+       rightWheel.set(.5);
+       leftWheel.set(.5);// drive forwards half speed
+        
+       Timer.delay(2.0);		//    for 2 seconds        
+    }
+    	rightWheel.set(0);     //stops robot
+    	leftWheel.set(0);
+    }
+}
